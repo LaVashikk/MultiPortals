@@ -105,7 +105,7 @@
         EntFireByHandle(this.particle, "Start", "", 0.03)
     }
     function StopParticle() {
-        EntFireByHandle(this.particle, "StopPlayEndCap")
+        EntFireByHandle(this.particle, "StopPlayEndCap", "", 0.03)
     }
 
     // ------------------------------------------------------------------------------ \\
@@ -130,7 +130,7 @@
         this.RestartParticle()
         this.LerpOpenAmount(0, 1, OPEN_TIME)
         if(this.dynamicLight && this.dynamicLight.IsValid()) 
-            animate.ColorTransition(this.dynamicLight, "0 0 0", this.color, OPEN_TIME, {ease = math.ease.InSine})
+            animate.ColorTransition(this.dynamicLight, "0 0 0", this.color, OPEN_TIME, {ease = math.ease.InSine, eventName=this.dynamicLight})
 
         // Process portal frame (because I can)
         local portalFrame = entLib.FindByModelWithin("models/multiportals/portal_emitter.mdl", portalOrigin, 5)
@@ -161,8 +161,10 @@
         if(this.ghosting && this.ghosting.IsValid()) 
             this.ghosting.SetDrawEnabled(0, CLOSE_TIME)
         
-        if(this.dynamicLight && this.dynamicLight.IsValid()) 
-            animate.ColorTransition(this.dynamicLight, this.color, "0 0 0", CLOSE_TIME)
+        if(this.dynamicLight && this.dynamicLight.IsValid()) {
+            ScheduleEvent.TryCancel(this.dynamicLight)
+            animate.ColorTransition(this.dynamicLight, this.dynamicLight.GetColor(), "0 0 0", CLOSE_TIME, {eventName=this.dynamicLight})
+        }
 
         // And process last portal frame
         if(this.currentPortalFrame) {
