@@ -131,6 +131,10 @@ if (myPortal) {
 
 > **Warning:** When you are ready to publish your map, you **MUST** pack all the custom content (`/scripts/`, `/materials/`) into your final `.bsp` file. Use a tool like `Pakrat` or other to do this, otherwise other players will not see the portals correctly.
 
+## Examples TODO
+
+The MultiPortals package includes example maps to demonstrate its capabilities. Feel free to explore them to gain a better understanding of how to use the features and unleash your creativity! Check the `Examples` folder!
+
 ## Credits
 The MultiPortals was created by <a href="https://www.youtube.com/@laVashikProductions">LaVashik</a>. Please give credit to LaVashik when using this in your projects :>
 
