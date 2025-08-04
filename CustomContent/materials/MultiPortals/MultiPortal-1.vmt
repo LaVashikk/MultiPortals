@@ -2,13 +2,13 @@ PortalRefract
 {
 	$translucent 1
 	$Stage 2
-	$PortalOpenAmount "0"
+	$PortalOpenAmount "1"
 	$PortalStatic "1"
 	$UseOnStaticProp 1
 	$PortalMaskTexture "MultiPortals/noise-blur-256x256"
 	$PortalColorGradientDark "{0 0 0}"
-	$PortalColorGradientLight "{0 166 166}"
-	$PortalColorScale "3.0"
+	$PortalColorGradientLight "{255 0 0}"
+	$PortalColorScale "1"
 
 	Proxies
 	{

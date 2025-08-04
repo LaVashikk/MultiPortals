@@ -1,0 +1,8 @@
+VertexLitGeneric
+{
+    $basetexture "models/props/portal_emitter"
+    $surfaceprop metal
+    $vertexcolor 0
+    $vertexalpha 0
+    $allowdiffusemodulation 0
+}

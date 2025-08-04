@@ -1,0 +1,19 @@
+UnlitGeneric
+{
+    $basetexture "models/props/portal_emitter_lights_on"
+    $surfaceprop default
+    $additive 1
+    $alpha 1
+
+    Proxies
+    {
+        Sine
+        {
+            sineperiod "1.00"
+            sinemin 0.7
+            sinemax 1
+            resultVar $alpha
+        }
+    }
+}
+

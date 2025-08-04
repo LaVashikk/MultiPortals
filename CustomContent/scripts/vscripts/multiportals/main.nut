@@ -1,72 +1,44 @@
-colors <- [
-    [63, 0, 0],
-    [127, 0, 0],
-    [191, 0, 0],
-    [63, 31, 0],
-    [127, 63, 0],
-    [191, 95, 0],
-    [63, 63, 0],
-    [127, 127, 0],
-    [191, 191, 0],
-    [31, 63, 0],
-    [63, 127, 0],
-    [95, 191, 0],
-    [0, 63, 0],
-    [0, 127, 0],
-    [0, 191, 0],
-    [0, 63, 63],
-    [0, 127, 127],
-    [0, 191, 191],
-    [0, 0, 63],
-    [0, 0, 127],
-    [0, 0, 191],
-    [31, 0, 63],
-    [63, 0, 127],
-    [95, 0, 191]
-]
-
-function findColorIndex(R, G, B) {
-    if (abs(R - G) <= 17 && abs(G - B) <= 17 && abs(B - R) <= 17)       // Gray
-        return 0
-
-    local min_distance = 1000000.0 
-    local closest_idx = 0
-    
-    foreach(index, color in colors){
-        local r = color[0]
-        local g = color[1]
-        local b = color[2]
-            
-        local distance = sqrt((r - R) * (r - R) + (g - G) * (g - G) + (b - B) * (b - B))
-        
-        if (distance < min_distance) {
-            min_distance = distance
-            closest_idx = index + 1
-        }
-    }
-
-    return closest_idx
+// We need to initialize this block only once
+if(!("MULTIPORTALS_INITED" in getroottable())) {
+    DoIncludeScript("PCapture-Lib", getroottable())
+    DoIncludeScript("multiportals/global_stuff", getroottable()) 
+    DoIncludeScript("multiportals/custom_portal", getroottable()) 
+    DoIncludeScript("multiportals/ghosting", getroottable()) 
+    ::MULTIPORTALS_INITED <- true
 }
 
-local color = split(self.GetModelName(), " ")
-local p1_ghost_skin = findColorIndex(color[0].tointeger(), color[1].tointeger(), color[2].tointeger())
-local p2_ghost_skin = findColorIndex(color[3].tointeger(), color[4].tointeger(), color[5].tointeger())
+const OPEN_TIME = 0.45                  // default value: 0.5
+const PORTAL_STATIC_OPEN_TIME = 1.2     // default value: 0.9
+const CLOSE_TIME = 0.25                 // default value: 0
 
-EntFireByHandle(EntityGroup[0], "SetMaterialVar", p1_ghost_skin.tostring(), 0.1, null, null)
-EntFireByHandle(EntityGroup[1], "SetMaterialVar", p2_ghost_skin.tostring(), 0.1, null, null)
 
-if(Entities.FindByName(self, "@MultiPortalsGhosting")) {
-    return self.Destroy()
-}
-    
+// Parse instance parameters from the entity's model name, using '|' as a delimiter.
+instanceParams <- split(self.GetModelName(), "|") 
+// Validate that we have enough parameters to proceed.
+if(instanceParams.len() < 6) throw("Invalid instance parameters in model name. Expected at least 6 arguments, but received " + instanceParams.len())
 
-function ChangePortalPair( pairId ) {
+pairId <- instanceParams[0].tointeger()
+
+// Initialize the two CustomPortal objects that make up this pair.
+portal1 <- CustomPortal(EntityGroup[0], instanceParams[1], instanceParams)
+portal2 <- CustomPortal(EntityGroup[1], instanceParams[2], instanceParams)
+// A small hack to make alternative for `SetActivatedState`.
+portal1.portal.SetInputHook("FireUser1", function():(portal1) {EntFireByHandle(portal1.portal, "SetActivatedState", "1"); portal1.OnPlaced(); return true})
+portal2.portal.SetInputHook("FireUser1", function():(portal2) {EntFireByHandle(portal2.portal, "SetActivatedState", "1"); portal2.OnPlaced(); return true})
+portal1.portal.SetInputHook("FireUser4", function():(portal1) {portal1.FizzleFast(); return true})
+portal2.portal.SetInputHook("FireUser4", function():(portal2) {portal2.FizzleFast(); return true})
+
+
+// Initialize the portal pair detector and connect its outputs to handle fizzle events.
+pairDetector <- InitPortalPair(pairId)
+pairDetector.ConnectOutputEx("OnEndTouchPortal1", function():(portal1) {portal1.OnFizzled()})
+pairDetector.ConnectOutputEx("OnEndTouchPortal2", function():(portal2) {portal2.OnFizzled()})
+
+
+// This function is called to make this portal pair the active one for the player's portal gun.
+function ActivatePortalPair() {
     SendToConsole("change_portalgun_linkage_id " + pairId)
 }
 
-EntFireByHandle(self, "runscriptcode", "SendToConsole(\"r_portal_fastpath 0\")", 1, null, null)
-EntFireByHandle(self, "runscriptcode", "SendToConsole(\"portal_draw_ghosting 0\")", 1, null, null)
-EntFireByHandle(self, "runscriptcode", "SendToConsole(\"hud_saytext_time 0\")", 1, null, null)
-EntFireByHandle(self, "runscriptcode", "SendToConsole(\"sv_cheats 1\")", 1, null, null)
-
-printl("\n===================================\nMultiPortals successfully initialized\nAuthor: laVashik\nGitHub: https://github.com/IaVashik\n===================================\n")
+// Store the portal instances for the global GetCustomPortal API.
+customPortals[pairId] <- [portal1, portal2]
