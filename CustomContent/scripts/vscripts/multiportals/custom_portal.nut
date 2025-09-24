@@ -8,6 +8,7 @@
     particleCP7 = null;
 
     //* internal state fields
+    pairId = 0;
     color = null;
     colorScale = 1;
     lastPos = Vector();
@@ -21,7 +22,8 @@
     modifyStatic = null;
     modifyColorScale = null;
 
-    constructor(portal, color, instanceParams = null) {
+    constructor(pairId, portal, color, instanceParams = null) {
+        this.pairId = pairId
         this.portal = entLib.FromEntity(portal)
         this.color = color
             
@@ -46,7 +48,7 @@
         ScheduleEvent.Add("global", portal.SetModel, 1, [ALWAYS_PRECACHED_MODEL], portal) 
 
         // Initial setup
-        this.SetColor(color)
+        this.SetColor(color, false)
         this.SetPortalStatic(1, 0.5)
         this.SetOpenAmount(0, 0.5)
         this.portal.SetUserData("CustomPortalInstance", this)
@@ -59,11 +61,12 @@
     }
 
     // Setters
-    function SetColor(color) {
+    function SetColor(color, runEvent=true) {
         if (type(color) == "string") color = macros.StrToVec(color)
         
         this.color = color
         EntFireByHandle(this.modifyColor, "SetMaterialVar", "{" + macros.VecToStr(color) + "}")
+        if(runEvent) EventListener.Notify("ChangePortalColor", this, color)
         
         // particle control point
         this.particleCP7.SetOrigin(color)
@@ -118,6 +121,7 @@
         if(math.vector.isEqually2(portalOrigin, this.lastPos, 1000) && this.isOpen) return
         this.lastPos = portalOrigin
         ScheduleEvent.TryCancel(this.portal)
+        EventListener.Notify("OnPlaced", this)
         
         // If it was previously closed
         if(!this.isOpen) {
@@ -135,8 +139,10 @@
 
         // Process portal frame (because I can)
         local portalFrame = entLib.FindByModelWithin("models/multiportals/portal_emitter.mdl", portalOrigin, 5)
-        if(portalFrame) portalFrame.SetColor(math.vector.clamp((this.color * this.colorScale.tofloat()), 0, 255))
-        
+        local frameColor = math.vector.clamp((this.color * this.colorScale.tofloat()), 0, 255)
+        if(portalFrame) {
+            animate.ColorTransition(portalFrame, Vector(), frameColor, 0.3)
+        }
         // And process last portal frame
         if(this.currentPortalFrame) this.currentPortalFrame.SetColor(Vector())
         this.currentPortalFrame = portalFrame
@@ -160,6 +166,7 @@
         this.LerpOpenAmount(1, 0, CLOSE_TIME)
         this.SetPortalStatic(1)
         this.fakePortalModel.SetDrawEnabled(0, CLOSE_TIME)
+        EventListener.Notify("OnFizzled", this)
         
         if(this.ghosting && this.ghosting.IsValid()) 
             this.ghosting.SetDrawEnabled(0, CLOSE_TIME)
@@ -176,6 +183,23 @@
         }
     }
 
+    // ====== \\
+    // INPUTS:
+
+    function Fizzle() {
+        EntFireByHandle(this.portal, "SetActivatedState", "0")
+        this.OnFizzled()
+
+        // Processing the PortalStatic effect
+        local portalPartner = this.portal.GetPartnerInstance()
+        if(!portalPartner) return  // partner is closed, ignore
+        local partner = portalPartner.GetUserData("CustomPortalInstance")
+        if(!partner.isOpen) return
+        
+        ScheduleEvent.TryCancel(partner.portal)
+        partner.SetPortalStatic(1)
+    }
+
     function FizzleFast() {
         this.isOpen = false
         ScheduleEvent.TryCancel(this.portal)
@@ -184,6 +208,7 @@
         this.SetPortalStatic(1)
         this.SetOpenAmount(0)
         this.fakePortalModel.SetDrawEnabled(0)
+        EventListener.Notify("OnFizzled", this)
 
         if(this.ghosting && this.ghosting.IsValid()) 
             this.ghosting.SetDrawEnabled(0)
