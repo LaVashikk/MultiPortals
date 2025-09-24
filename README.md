@@ -108,14 +108,17 @@ You can open and close the portals from this instance using inputs. This is perf
 
 ### VScript API
 
-For advanced scripting, you can get a handle to any portal instance from another VScript file using a global function.
+For advanced scripting, you can interact with MultiPortals instances from your own VScript files.
+
+#### Getting a Portal Instance
+Use the global function `GetCustomPortal` to get a handle to any portal instance.
 
 `GetCustomPortal(pairId, portalIdx)`
 - `pairId` (integer): The ID you set in `$portal-id`.
 - `portalIdx` (integer): The portal index (0 for the first, 1 for the second).
 
 *Example VScript Code:*
-```cs
+```js
 // Get the instance of the first portal from the pair with ID 1
 local myPortal = GetCustomPortal(1, 0); 
 
@@ -125,7 +128,44 @@ if (myPortal) {
 }
 ```
 
+#### Responding to Portal Events with VScript (`MP_Events`)
+For even deeper integration, MultiPortals fires several VScript events that you can listen to from your own scripts. This allows you to create custom logic that reacts to what the portals are doing. To use this, you must subscribe a function to an event using the `AddAction()` method.
+
+| Event Name          | Arguments Passed to Your Function                  | Description                                                               |
+| ------------------- | -------------------------------------------------- | ------------------------------------------------------------------------- |
+| `ChangePortalPair`  | `pairId` (integer)                                 | Fired when the active portal gun linkage ID is changed.                   |
+| `ChangePortalColor` | `instance` (CustomPortal), `color` (Vector)        | Fired when a portal's color is changed via `.SetColor()`.                 |
+| `OnPlaced`          | `instance` (CustomPortal)                          | Fired when a portal is successfully placed and begins its opening animation. |
+| `OnFizzled`         | `instance` (CustomPortal)                          | Fired when a portal is fizzled and begins its closing animation.          |
+
+*Example VScript Code:*
+```js
+// This function will run whenever ANY MultiPortal is placed.
+function MyCustomOnPlacedAction(portalInstance) {
+    // 'portalInstance' is the CustomPortal object that was placed.
+    local portalName = portalInstance.portal.GetName();
+    printl("A portal was placed: " + portalName);
+    
+    // You can check its pair ID and trigger custom logic.
+    if (portalInstance.pairId == 3) {
+        EntFire("my_secret_relay", "Trigger");
+    }
+}
+
+// Subscribe the function to the 'OnPlaced' event
+MP_Events.OnPlaced.AddAction(MyCustomOnPlacedAction);
+```
+
+## Addons & Extensions
+
+This section is dedicated to community-created scripts and instances that extend the functionality of MultiPortals. If you've built something cool that uses the `MP_Events` API, let us know!
+
+*   _(More content coming soon!)_, frfr
+
 ## Important Notes
+
+> **For Players: How to Disable Ghosting**
+> I'm a player, what if I want to disable the forced ghosting effect for multiportals? Use `multiportal_draw_ghosting_off` or `portal_draw_ghosting_disable`, they are equivalent.
 
 > **Note:** Do not place your map at the origin coordinates (0, 0, 0), as there will be an unnecessary portal particle.
 
