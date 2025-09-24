@@ -1,6 +1,6 @@
 // We need to initialize this block only once
 if(!("MULTIPORTALS_INITED" in getroottable())) {
-    DoIncludeScript("PCapture-Lib", getroottable())
+    DoIncludeScript("multiportals/PCapture-Lib", getroottable())
     DoIncludeScript("multiportals/global_stuff", getroottable()) 
     DoIncludeScript("multiportals/custom_portal", getroottable()) 
     DoIncludeScript("multiportals/ghosting", getroottable()) 

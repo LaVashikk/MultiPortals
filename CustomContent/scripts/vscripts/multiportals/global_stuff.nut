@@ -15,3 +15,7 @@ ScheduleEvent.Add("late_init", function() {
 ::GetCustomPortal <- function(pairId, portalIdx) {
     return customPortals[pairId][portalIdx]
 }
+
+::LerpMaterialModity <- macros.BuildAnimateFunction("material_modity_controller", function(ent, newValue) {
+    EntFireByHandle(ent, "SetMaterialVar", newValue.tostring())
+})

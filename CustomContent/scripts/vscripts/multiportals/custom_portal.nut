@@ -25,7 +25,7 @@
         this.portal = entLib.FromEntity(portal)
         this.color = color
             
-        foreach(ent in this.portal.GetAllChildrenRecursivly()) {
+        foreach(ent in this.portal.GetAllChildrenRecursivly().iter()) {
             local indicator = ent.GetName().slice(-5)
             if(indicator == "-base") this.fakePortalModel = ent
             if(indicator == "light") this.dynamicLight = ent
@@ -93,10 +93,10 @@
 
     // Lerp Anim
     function LerpOpenAmount(startVal, endVal, time) {
-        EntFireByHandle(this.modifyOpenAmount, "StartFloatLerp", macros.format("{} {} {} 0", startVal, endVal, time))
+        ::LerpMaterialModity(this.modifyOpenAmount, startVal, endVal, time, {eventName=this.portal})
     }
     function LerpPortalStatic(startVal, endVal, time) {
-        EntFireByHandle(this.modifyStatic, "StartFloatLerp", macros.format("{} {} {} 0", startVal, endVal, time))
+        ::LerpMaterialModity(this.modifyStatic, startVal, endVal, time, {eventName=this.portal})
     }
     
     // Particles
@@ -117,6 +117,7 @@
         // do not process if the portal position has not changed!
         if(math.vector.isEqually2(portalOrigin, this.lastPos, 1000) && this.isOpen) return
         this.lastPos = portalOrigin
+        ScheduleEvent.TryCancel(this.portal)
         
         // If it was previously closed
         if(!this.isOpen) {
@@ -152,6 +153,8 @@
 
     function OnFizzled() {
         if(!this.isOpen) return 
+
+        ScheduleEvent.TryCancel(this.portal)
         this.isOpen = false
         this.StopParticle()
         this.LerpOpenAmount(1, 0, CLOSE_TIME)
@@ -175,11 +178,15 @@
 
     function FizzleFast() {
         this.isOpen = false
+        ScheduleEvent.TryCancel(this.portal)
         EntFireByHandle(this.portal, "SetActivatedState", "0")
         EntFireByHandle(this.particle, "DestroyImmediately")
         this.SetPortalStatic(1)
         this.SetOpenAmount(0)
         this.fakePortalModel.SetDrawEnabled(0)
+
+        if(this.ghosting && this.ghosting.IsValid()) 
+            this.ghosting.SetDrawEnabled(0)
         if(this.dynamicLight && this.dynamicLight.IsValid()) 
             this.dynamicLight.SetColor("0 0 0")
         if(this.currentPortalFrame) {
