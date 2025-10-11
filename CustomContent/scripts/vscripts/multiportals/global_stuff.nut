@@ -1,4 +1,5 @@
 ::customPortals <- {}
+::selectedPair <- null
 
 ScheduleEvent.Add("late_init", function() {
     SendToConsole("portal_draw_ghosting 0")
@@ -20,8 +21,16 @@ ScheduleEvent.Add("late_init", function() {
 }, 1)
 
 ::GetCustomPortal <- function(pairId, portalIdx) {
-    return customPortals[pairId][portalIdx]
+    if(pairId in customPortals)
+        return customPortals[pairId][portalIdx]
 }
+
+::SetPortalPair <- function(pairId) {
+    selectedPair = pairId
+    EventListener.Notify("ChangePortalPair", pairId)
+    SendToConsole("change_portalgun_linkage_id " + pairId)
+}
+
 
 ::LerpMaterialModity <- macros.BuildAnimateFunction("material_modity_controller", function(ent, newValue) {
     EntFireByHandle(ent, "SetMaterialVar", newValue.tostring())

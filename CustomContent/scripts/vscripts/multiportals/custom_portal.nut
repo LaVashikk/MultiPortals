@@ -9,6 +9,7 @@
 
     //* internal state fields
     pairId = 0;
+    isPrimaryPortal = null;
     color = null;
     colorScale = 1;
     lastPos = Vector();
@@ -22,10 +23,11 @@
     modifyStatic = null;
     modifyColorScale = null;
 
-    constructor(pairId, portal, color, instanceParams = null) {
+    constructor(pairId, portal, isPrimary, color, instanceParams = null) {
         this.pairId = pairId
         this.portal = entLib.FromEntity(portal)
         this.color = color
+        this.isPrimaryPortal = isPrimary
             
         foreach(ent in this.portal.GetAllChildrenRecursivly().iter()) {
             local indicator = ent.GetName().slice(-5)
@@ -218,6 +220,15 @@
             this.currentPortalFrame.SetColor("0 0 0")
             this.currentPortalFrame = null
         }
+
+        // Processing the PortalStatic effect
+        local portalPartner = this.portal.GetPartnerInstance()
+        if(!portalPartner) return  // partner is closed, ignore
+        local partner = portalPartner.GetUserData("CustomPortalInstance")
+        if(!partner.isOpen) return
+        
+        ScheduleEvent.TryCancel(partner.portal)
+        partner.SetPortalStatic(1)
     }
 
     function _tostring() return "CustomPortal{ pair: " + pairId + ", portal: " + this.portal.GetName() + " }" 

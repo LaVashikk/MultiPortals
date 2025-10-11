@@ -19,17 +19,15 @@ if(instanceParams.len() < 6) throw("Invalid instance parameters in model name. E
 pairId <- instanceParams[0].tointeger()
 
 // Initialize the two CustomPortal objects that make up this pair.
-portal1 <- CustomPortal(pairId, EntityGroup[0], instanceParams[1], instanceParams)
-portal2 <- CustomPortal(pairId, EntityGroup[1], instanceParams[2], instanceParams)
+portal1 <- CustomPortal(pairId, EntityGroup[0], true , instanceParams[1], instanceParams)
+portal2 <- CustomPortal(pairId, EntityGroup[1], false, instanceParams[2], instanceParams)
 
 // A small hack to make alternative for `SetActivatedState`. // TODO
-portal1.portal.SetInputHook("FireUser1", function():(portal1) {EntFireByHandle(portal1.portal, "SetActivatedState", "1"); portal1.OnPlaced(); return true})
-portal2.portal.SetInputHook("FireUser1", function():(portal2) {EntFireByHandle(portal2.portal, "SetActivatedState", "1"); portal2.OnPlaced(); return true})
-portal1.portal.SetInputHook("FireUser3", function():(portal1) {portal1.Fizzle(); return true})
-portal2.portal.SetInputHook("FireUser3", function():(portal2) {portal2.Fizzle(); return true})
-portal1.portal.SetInputHook("FireUser4", function():(portal1) {portal1.FizzleFast(); return true})
-portal2.portal.SetInputHook("FireUser4", function():(portal2) {portal2.FizzleFast(); return true})
-
+foreach(CPortal in [portal1, portal2]) {
+    CPortal.portal.SetInputHook("FireUser1", function():(CPortal) {EntFireByHandle(CPortal.portal, "SetActivatedState", "1"); CPortal.OnPlaced(); return true})
+    CPortal.portal.SetInputHook("FireUser3", function():(CPortal) {CPortal.Fizzle(); return true})
+    CPortal.portal.SetInputHook("FireUser4", function():(CPortal) {CPortal.FizzleFast(); return true})
+}
 
 // Initialize the portal pair detector and connect its outputs to handle fizzle events.
 pairDetector <- InitPortalPair(pairId)
@@ -39,6 +37,7 @@ pairDetector.ConnectOutputEx("OnEndTouchPortal2", function():(portal2) {portal2.
 
 // This function is called to make this portal pair the active one for the player's portal gun.
 function ActivatePortalPair() {
+    ::selectedPair = pairId
     EventListener.Notify("ChangePortalPair", pairId)
     SendToConsole("change_portalgun_linkage_id " + pairId)
 }
