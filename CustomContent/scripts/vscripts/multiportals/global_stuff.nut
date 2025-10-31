@@ -9,7 +9,7 @@ ScheduleEvent.Add("late_init", function() {
     yield 0.3
     SendToConsole("hud_saytext_time 12")
 
-    if(customPortals.len() > 3) {
+    if(customPortals.len() >= 3) {
         SendToConsole("r_portal_fastpath 0")
     }
 

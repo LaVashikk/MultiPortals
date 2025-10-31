@@ -26,6 +26,7 @@
     constructor(pairId, portal, isPrimary, color, instanceParams = null) {
         this.pairId = pairId
         this.portal = entLib.FromEntity(portal)
+        this.portal.SetTraceIgnore(true)
         this.color = color
         this.isPrimaryPortal = isPrimary
             
@@ -123,8 +124,10 @@
         if(math.vector.isEqually2(portalOrigin, this.lastPos, 1000) && this.isOpen) return
         this.lastPos = portalOrigin
         ScheduleEvent.TryCancel(this.portal)
+
         EventListener.Notify("OnPlaced", this)
-        
+        this.portal.SetTraceIgnore(false)
+
         // If it was previously closed
         if(!this.isOpen) {
             this.fakePortalModel.SetDrawEnabled(1)
@@ -163,15 +166,18 @@
         if(!this.isOpen) return 
 
         ScheduleEvent.TryCancel(this.portal)
+        
         this.isOpen = false
         this.StopParticle()
         this.LerpOpenAmount(1, 0, CLOSE_TIME)
         this.SetPortalStatic(1)
-        this.fakePortalModel.SetDrawEnabled(0, CLOSE_TIME)
+        this.fakePortalModel.SetDrawEnabled(0, CLOSE_TIME, this.portal)
+
         EventListener.Notify("OnFizzled", this)
-        
+        this.portal.SetTraceIgnore(true)
+
         if(this.ghosting && this.ghosting.IsValid()) 
-            this.ghosting.SetDrawEnabled(0, CLOSE_TIME)
+            this.ghosting.SetDrawEnabled(0, CLOSE_TIME, this.portal)
         
         if(this.dynamicLight && this.dynamicLight.IsValid()) {
             ScheduleEvent.TryCancel(this.dynamicLight)
@@ -204,12 +210,15 @@
 
     function FizzleFast() {
         this.isOpen = false
+        this.portal.SetTraceIgnore(true)
         ScheduleEvent.TryCancel(this.portal)
-        EntFireByHandle(this.portal, "SetActivatedState", "0")
-        EntFireByHandle(this.particle, "DestroyImmediately")
+
         this.SetPortalStatic(1)
         this.SetOpenAmount(0)
         this.fakePortalModel.SetDrawEnabled(0)
+        EntFireByHandle(this.portal, "SetActivatedState", "0")
+        EntFireByHandle(this.particle, "DestroyImmediately")
+
         EventListener.Notify("OnFizzled", this)
 
         if(this.ghosting && this.ghosting.IsValid()) 
