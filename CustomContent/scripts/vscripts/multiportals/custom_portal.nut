@@ -99,10 +99,16 @@
 
     // Lerp Anim
     function LerpOpenAmount(startVal, endVal, time) {
-        ::LerpMaterialModity(this.modifyOpenAmount, startVal, endVal, time, {eventName=this.portal})
+        ::LerpMaterialModity(this.modifyOpenAmount, startVal, endVal, time, {eventName=this.portal + "amout"})
     }
     function LerpPortalStatic(startVal, endVal, time) {
-        ::LerpMaterialModity(this.modifyStatic, startVal, endVal, time, {eventName=this.portal})
+        ::LerpMaterialModity(this.modifyStatic, startVal, endVal, time, {eventName=this.portal + "static"})
+    }
+    function ResetAnims() {
+        ScheduleEvent.TryCancel(this.portal)
+        ScheduleEvent.TryCancel(this.portal + "amout")
+        ScheduleEvent.TryCancel(this.portal + "static")
+        ScheduleEvent.TryCancel(this.dynamicLight)
     }
     
     // Particles
@@ -123,7 +129,7 @@
         // do not process if the portal position has not changed!
         if(math.vector.isEqually2(portalOrigin, this.lastPos, 1000) && this.isOpen) return
         this.lastPos = portalOrigin
-        ScheduleEvent.TryCancel(this.portal)
+        this.ResetAnims()
 
         EventListener.Notify("OnPlaced", this)
         this.portal.SetTraceIgnore(false)
@@ -158,14 +164,16 @@
         if(!portalPartner) return  // partner is closed, ignore
         local partner = portalPartner.GetUserData("CustomPortalInstance")
         if(!partner.isOpen) return
+
         this.LerpPortalStatic(1, 0, PORTAL_STATIC_OPEN_TIME)
+        ScheduleEvent.TryCancel(partner.portal + "static")
         partner.LerpPortalStatic(1, 0, PORTAL_STATIC_OPEN_TIME)
     }
 
     function OnFizzled() {
         if(!this.isOpen) return 
 
-        ScheduleEvent.TryCancel(this.portal)
+        this.ResetAnims()
         
         this.isOpen = false
         this.StopParticle()
@@ -180,7 +188,6 @@
             this.ghosting.SetDrawEnabled(0, CLOSE_TIME, this.portal)
         
         if(this.dynamicLight && this.dynamicLight.IsValid()) {
-            ScheduleEvent.TryCancel(this.dynamicLight)
             animate.ColorTransition(this.dynamicLight, this.dynamicLight.GetColor(), "0 0 0", CLOSE_TIME, {eventName=this.dynamicLight})
         }
 
@@ -204,14 +211,14 @@
         local partner = portalPartner.GetUserData("CustomPortalInstance")
         if(!partner.isOpen) return
         
-        ScheduleEvent.TryCancel(partner.portal)
+        partner.ResetAnims()
         partner.SetPortalStatic(1)
     }
 
     function FizzleFast() {
         this.isOpen = false
         this.portal.SetTraceIgnore(true)
-        ScheduleEvent.TryCancel(this.portal)
+        this.ResetAnims()
 
         this.SetPortalStatic(1)
         this.SetOpenAmount(0)
@@ -236,7 +243,7 @@
         local partner = portalPartner.GetUserData("CustomPortalInstance")
         if(!partner.isOpen) return
         
-        ScheduleEvent.TryCancel(partner.portal)
+        partner.ResetAnims()
         partner.SetPortalStatic(1)
     }
 

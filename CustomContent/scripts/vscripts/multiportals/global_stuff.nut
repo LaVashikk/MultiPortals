@@ -3,11 +3,12 @@
 
 ScheduleEvent.Add("late_init", function() {
     SendToConsole("portal_draw_ghosting 0")
+    SendToConsole("sv_alternateticks 0")
     
     SendToConsole("hud_saytext_time 0")
     SendToConsole("sv_cheats 1")
     yield 0.3
-    SendToConsole("hud_saytext_time 12")
+    SendToConsole("hud_saytext_time 6")
 
     if(customPortals.len() >= 3) {
         SendToConsole("r_portal_fastpath 0")
