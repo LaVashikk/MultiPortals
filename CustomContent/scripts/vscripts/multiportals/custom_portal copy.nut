@@ -8,8 +8,6 @@
     particleCP7 = null;
 
     //* internal state fields
-    pairId = 0;
-    isPrimaryPortal = null;
     color = null;
     colorScale = 1;
     lastPos = Vector();
@@ -23,14 +21,12 @@
     modifyStatic = null;
     modifyColorScale = null;
 
-    constructor(pairId, portal, isPrimary, color, instanceParams = null) {
-        this.pairId = pairId
+    constructor(portal, color, instanceParams = null) {
         this.portal = entLib.FromEntity(portal)
-        this.portal.SetTraceIgnore(true)
         this.color = color
-        this.isPrimaryPortal = isPrimary
+        this.currentPortalFrame = []
             
-        foreach(ent in this.portal.GetAllChildrenRecursively().iter()) {
+        foreach(ent in this.portal.GetAllChildrenRecursivly().iter()) {
             local indicator = ent.GetName().slice(-5)
             if(indicator == "-base") this.fakePortalModel = ent
             if(indicator == "light") this.dynamicLight = ent
@@ -51,7 +47,7 @@
         ScheduleEvent.Add("global", portal.SetModel, 1, [ALWAYS_PRECACHED_MODEL], portal) 
 
         // Initial setup
-        this.SetColor(color, false)
+        this.SetColor(color)
         this.SetPortalStatic(1, 0.5)
         this.SetOpenAmount(0, 0.5)
         this.portal.SetUserData("CustomPortalInstance", this)
@@ -64,12 +60,11 @@
     }
 
     // Setters
-    function SetColor(color, runEvent=true) {
+    function SetColor(color) {
         if (type(color) == "string") color = macros.StrToVec(color)
         
         this.color = color
         EntFireByHandle(this.modifyColor, "SetMaterialVar", "{" + macros.VecToStr(color) + "}")
-        if(runEvent) EventListener.Notify("ChangePortalColor", this, color)
         
         // particle control point
         this.particleCP7.SetOrigin(color)
@@ -99,16 +94,10 @@
 
     // Lerp Anim
     function LerpOpenAmount(startVal, endVal, time) {
-        ::LerpMaterialModity(this.modifyOpenAmount, startVal, endVal, time, {eventName=this.portal + "amout"})
+        ::LerpMaterialModity(this.modifyOpenAmount, startVal, endVal, time, {eventName=this.portal})
     }
     function LerpPortalStatic(startVal, endVal, time) {
-        ::LerpMaterialModity(this.modifyStatic, startVal, endVal, time, {eventName=this.portal + "static"})
-    }
-    function ResetAnims() {
-        ScheduleEvent.TryCancel(this.portal)
-        ScheduleEvent.TryCancel(this.portal + "amout")
-        ScheduleEvent.TryCancel(this.portal + "static")
-        ScheduleEvent.TryCancel(this.dynamicLight)
+        ::LerpMaterialModity(this.modifyStatic, startVal, endVal, time, {eventName=this.portal})
     }
     
     // Particles
@@ -129,11 +118,8 @@
         // do not process if the portal position has not changed!
         if(math.vector.IsEqual(portalOrigin, this.lastPos, 1000) && this.isOpen) return
         this.lastPos = portalOrigin
-        this.ResetAnims()
-
-        EventListener.Notify("OnPlaced", this)
-        this.portal.SetTraceIgnore(false)
-
+        ScheduleEvent.TryCancel(this.portal)
+        
         // If it was previously closed
         if(!this.isOpen) {
             this.fakePortalModel.SetDrawEnabled(1)
@@ -149,14 +135,17 @@
             animate.ColorTransition(this.dynamicLight, "0 0 0", this.color, OPEN_TIME, {ease = math.ease.InSine, eventName=this.dynamicLight})
 
         // Process portal frame (because I can)
-        local portalFrame = entLib.FindByModelWithin("models/multiportals/portal_emitter.mdl", portalOrigin, 5)
+        foreach(fr in this.currentPortalFrame) fr.SetColor(Vector())
+        this.currentPortalFrame = []
+
         local frameColor = math.vector.clamp((this.color * this.colorScale.tofloat()), 0, 255)
-        if(portalFrame) {
-            animate.ColorTransition(portalFrame, Vector(), frameColor, 0.3)
+        for(local frame; frame = entLib.FindByClassnameWithin("prop_dynamic", portalOrigin, 40, frame);) {
+            if(frame.GetModelName().find("pcapture/gameplay/portals") != null) {
+                currentPortalFrame.append(frame)
+                // frame.SetColor(frameColor)
+            }
         }
-        // And process last portal frame
-        if(this.currentPortalFrame) this.currentPortalFrame.SetColor(Vector())
-        this.currentPortalFrame = portalFrame
+        animate.ColorTransition(currentPortalFrame, Vector(), frameColor, 0.3)
         
 
         // Processing the PortalStatic effect
@@ -164,42 +153,32 @@
         if(!portalPartner) return  // partner is closed, ignore
         local partner = portalPartner.GetUserData("CustomPortalInstance")
         if(!partner.isOpen) return
-
         this.LerpPortalStatic(1, 0, PORTAL_STATIC_OPEN_TIME)
-        ScheduleEvent.TryCancel(partner.portal + "static")
         partner.LerpPortalStatic(1, 0, PORTAL_STATIC_OPEN_TIME)
     }
 
     function OnFizzled() {
         if(!this.isOpen) return 
 
-        this.ResetAnims()
-        
+        ScheduleEvent.TryCancel(this.portal)
         this.isOpen = false
         this.StopParticle()
         this.LerpOpenAmount(1, 0, CLOSE_TIME)
         this.SetPortalStatic(1)
-        this.fakePortalModel.SetDrawEnabled(0, CLOSE_TIME, this.portal)
-
-        EventListener.Notify("OnFizzled", this)
-        this.portal.SetTraceIgnore(true)
-
+        this.fakePortalModel.SetDrawEnabled(0, CLOSE_TIME)
+        
         if(this.ghosting && this.ghosting.IsValid()) 
-            this.ghosting.SetDrawEnabled(0, CLOSE_TIME, this.portal)
+            this.ghosting.SetDrawEnabled(0, CLOSE_TIME)
         
         if(this.dynamicLight && this.dynamicLight.IsValid()) {
+            ScheduleEvent.TryCancel(this.dynamicLight)
             animate.ColorTransition(this.dynamicLight, this.dynamicLight.GetColor(), "0 0 0", CLOSE_TIME, {eventName=this.dynamicLight})
         }
 
         // And process last portal frame
-        if(this.currentPortalFrame) {
-            this.currentPortalFrame.SetColor("0 0 0")
-            this.currentPortalFrame = null
-        }
+        foreach(fr in this.currentPortalFrame) fr.SetColor(Vector())
+        this.currentPortalFrame = []
     }
-
-    // ====== \\
-    // INPUTS:
 
     function Fizzle() {
         EntFireByHandle(this.portal, "SetActivatedState", "0")
@@ -211,40 +190,25 @@
         local partner = portalPartner.GetUserData("CustomPortalInstance")
         if(!partner.isOpen) return
         
-        partner.ResetAnims()
+        ScheduleEvent.TryCancel(partner.portal)
         partner.SetPortalStatic(1)
     }
 
     function FizzleFast() {
         this.isOpen = false
-        this.portal.SetTraceIgnore(true)
-        this.ResetAnims()
-
+        ScheduleEvent.TryCancel(this.portal)
+        EntFireByHandle(this.portal, "SetActivatedState", "0")
+        EntFireByHandle(this.particle, "DestroyImmediately")
         this.SetPortalStatic(1)
         this.SetOpenAmount(0)
         this.fakePortalModel.SetDrawEnabled(0)
-        EntFireByHandle(this.portal, "SetActivatedState", "0")
-        EntFireByHandle(this.particle, "DestroyImmediately")
-
-        EventListener.Notify("OnFizzled", this)
 
         if(this.ghosting && this.ghosting.IsValid()) 
             this.ghosting.SetDrawEnabled(0)
         if(this.dynamicLight && this.dynamicLight.IsValid()) 
             this.dynamicLight.SetColor("0 0 0")
-        if(this.currentPortalFrame) {
-            this.currentPortalFrame.SetColor("0 0 0")
-            this.currentPortalFrame = null
-        }
-
-        // Processing the PortalStatic effect
-        local portalPartner = this.portal.GetPartnerInstance()
-        if(!portalPartner) return  // partner is closed, ignore
-        local partner = portalPartner.GetUserData("CustomPortalInstance")
-        if(!partner.isOpen) return
-        
-        partner.ResetAnims()
-        partner.SetPortalStatic(1)
+            foreach(fr in this.currentPortalFrame) fr.SetColor(Vector())
+            this.currentPortalFrame = []
     }
 
     function _tostring() return "CustomPortal{ pair: " + pairId + ", portal: " + this.portal.GetName() + " }" 

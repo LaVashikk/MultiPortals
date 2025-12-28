@@ -1,25 +1,23 @@
 ::customPortals <- {}
 ::selectedPair <- null
 
-ScheduleEvent.Add("late_init", function() {
+function OnPostSpawn() {
     SendToConsole("portal_draw_ghosting 0")
     SendToConsole("sv_alternateticks 0")
     
     SendToConsole("hud_saytext_time 0")
     SendToConsole("sv_cheats 1")
-    yield 0.3
-    SendToConsole("hud_saytext_time 6")
-
-    if(customPortals.len() >= 3) {
-        SendToConsole("r_portal_fastpath 0")
-    }
+    SendToConsole("r_portal_fastpath 0")
+    
+    ScheduleEvent.Add("global", function() {
+        SendToConsole("hud_saytext_time 6")
+        printl("\n===================================\nMultiPortals successfully initialized\nAuthor: laVashik\nGitHub: https://github.com/LaVashikk\n===================================\n")
+    }, 0.1)
 
     local cmd = "script foreach(pair in customPortals) foreach(p in pair) p.ghosting.Destroy()"
     macros.CreateCommand("portal_draw_ghosting_disable", cmd)
     macros.CreateCommand("multiportal_draw_ghosting_off", cmd)
-    
-    printl("\n===================================\nMultiPortals successfully initialized\nAuthor: laVashik\nGitHub: https://github.com/LaVashikk\n===================================\n")
-}, 1)
+}
 
 ::GetCustomPortal <- function(pairId, portalIdx) {
     if(pairId in customPortals)
@@ -36,6 +34,9 @@ ScheduleEvent.Add("late_init", function() {
 ::LerpMaterialModity <- macros.BuildAnimateFunction("material_modity_controller", function(ent, newValue) {
     EntFireByHandle(ent, "SetMaterialVar", newValue.tostring())
 })
+
+local auto = entLib.CreateByClassname("logic_auto")
+auto.ConnectOutput("OnLoadGame", "OnPostSpawn")
 
 /*
  * This table serves as a central hub for all custom VScript events fired by the MultiPortals system.
