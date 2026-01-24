@@ -16,7 +16,7 @@ function OnPostSpawn() {
 
     local cmd = "script foreach(pair in customPortals) foreach(p in pair) p.ghosting.Destroy()"
     macros.CreateCommand("portal_draw_ghosting_disable", cmd)
-    macros.CreateCommand("multiportal_draw_ghosting_off", cmd)
+    macros.CreateCommand("multiportal_ghosting_off", cmd)
 }
 
 ::GetCustomPortal <- function(pairId, portalIdx) {
@@ -35,6 +35,7 @@ function OnPostSpawn() {
     EntFireByHandle(ent, "SetMaterialVar", newValue.tostring())
 })
 
+ScheduleEvent.Add("global", OnPostSpawn, 1)
 local auto = entLib.CreateByClassname("logic_auto")
 auto.ConnectOutput("OnLoadGame", "OnPostSpawn")
 
