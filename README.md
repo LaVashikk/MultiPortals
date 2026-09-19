@@ -102,6 +102,7 @@ You can open and close the portals from this instance using inputs. This is perf
 
 **Available Inputs:**
 - **`FireUser1`**: Opens the portal with the standard animation.
+- **`FireUser3`**: Closes the portal with the standard animation.
 - **`FireUser4`**: Closes the portal instantly.
 
 *Example:* To have a button open a static red portal, send the button's `OnPressed` output to `my_red_portals-portal1` with the input `FireUser1`.
@@ -117,14 +118,41 @@ Use the global function `GetCustomPortal` to get a handle to any portal instance
 - `pairId` (integer): The ID you set in `$portal-id`.
 - `portalIdx` (integer): The portal index (0 for the first, 1 for the second).
 
+#### Available Methods & Properties
+Once you have a `CustomPortal` instance, you can use the following methods and properties:
+
+| Method | Parameters | Description |
+| --- | --- | --- |
+| `Open()` | — | Opens the portal with the opening animation. |
+| `Close(animTime)` | `animTime` *(float, default: `CLOSE_TIME` (0.3))* | Closes the portal. Pass `0` to close instantly. |
+| `Fizzle(animTime)` | `animTime` *(float, default: `CLOSE_TIME` (0.3))* | Closes both portals in the pair. |
+| `GetPartner()` | — | Returns the `CustomPortal` instance of the partner portal. |
+| `SetColor(color, runEvent)` | `color` *(string / Vector)*, `runEvent` *(bool, default: `true`)* | Dynamically changes the portal's color. |
+| `SetColorScale(value, delay)` | `value` *(float)*, `delay` *(float, default: `0`)* | Sets the brightness multiplier. |
+
+Key properties:
+- `portal` (`CBaseEntity`): The underlying `prop_portal` entity.
+- `isOpen` (`bool`): Whether the portal is currently open.
+- `pairId` (`int`): The pair ID.
+- `color` (`Vector`): Current portal color.
+
 *Example VScript Code:*
 ```js
-// Get the instance of the first portal from the pair with ID 1
+// Get the first portal from the pair with ID 1
 local myPortal = GetCustomPortal(1, 0); 
 
 if (myPortal) {
     // Dynamically change its color to green
     myPortal.SetColor("0 255 0");
+
+    // Programmatically open it
+    myPortal.Open();
+
+    // Close the partner portal instantly
+    local partner = myPortal.GetPartner();
+    if (partner && partner.isOpen) {
+        partner.Close(0);
+    }
 }
 ```
 
@@ -135,16 +163,16 @@ For even deeper integration, MultiPortals fires several VScript events that you 
 | ------------------- | -------------------------------------------------- | ------------------------------------------------------------------------- |
 | `ChangePortalPair`  | `pairId` (integer)                                 | Fired when the active portal gun linkage ID is changed.                   |
 | `ChangePortalColor` | `instance` (CustomPortal), `color` (Vector)        | Fired when a portal's color is changed via `.SetColor()`.                 |
-| `OnPlaced`          | `instance` (CustomPortal)                          | Fired when a portal is successfully placed and begins its opening animation. |
-| `OnFizzled`         | `instance` (CustomPortal)                          | Fired when a portal is fizzled and begins its closing animation.          |
+| `OnOpened`          | `instance` (CustomPortal)                          | Fired when a portal is opened and begins its opening animation.           |
+| `OnClosed`          | `instance` (CustomPortal)                          | Fired when a portal is closed and begins its closing animation.          |
 
 *Example VScript Code:*
 ```js
-// This function will run whenever ANY MultiPortal is placed.
-function MyCustomOnPlacedAction(portalInstance) {
-    // 'portalInstance' is the CustomPortal object that was placed.
+// This function will run whenever ANY MultiPortal is opened.
+function MyCustomOnOpenedAction(portalInstance) {
+    // 'portalInstance' is the CustomPortal object that was opened.
     local portalName = portalInstance.portal.GetName();
-    printl("A portal was placed: " + portalName);
+    printl("A portal was opened: " + portalName);
     
     // You can check its pair ID and trigger custom logic.
     if (portalInstance.pairId == 3) {
@@ -152,8 +180,8 @@ function MyCustomOnPlacedAction(portalInstance) {
     }
 }
 
-// Subscribe the function to the 'OnPlaced' event
-MP_Events.OnPlaced.AddAction(MyCustomOnPlacedAction);
+// Subscribe the function to the 'OnOpened' event
+MP_Events.OnOpened.AddAction(MyCustomOnOpenedAction);
 ```
 
 ## Addons & Extensions

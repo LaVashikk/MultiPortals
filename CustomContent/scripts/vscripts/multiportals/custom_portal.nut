@@ -135,14 +135,27 @@
 
     // Helper
     function GetPartner() {
-        local portalPartner = this.portal.GetPartnerInstance()
-        if(!portalPartner) return this.lastPartner // partner is closed
-        this.lastPartner = portalPartner.GetUserData("CustomPortalInstance")
-        return this.lastPartner
+        local portalIdx = this.isPrimaryPortal ? 1 : 0
+        return GetCustomPortal(this.pairId, portalIdx)
     }
 
     // Inputs
-    // todo move here
+    function Open() {
+        EntFireByHandle(this.portal, "SetActivatedState", "1")
+        this.OnOpened()
+    }
+
+    function Close(animTime = CLOSE_TIME) {
+        EntFireByHandle(this.portal, "SetActivatedState", "0")
+        this.OnClosed(animTime)
+    }
+    
+    function Fizzle(animTime = CLOSE_TIME) {
+        EntFireByHandle(this.portal, "SetActivatedState", "0")
+        EntFireByHandle(this.portal.GetPartnerInstance(), "SetActivatedState", "0")
+        this.OnClosed(animTime)
+        this.GetPartner().OnClosed(animTime)
+    }
 
     // ------------------------------------------------------------------------------ \\
 
@@ -189,7 +202,7 @@
         if(this.currentPortalFrame) this.currentPortalFrame.SetColor(Vector())
         this.currentPortalFrame = portalFrame
                 
-        EventListener.Notify("OnPlaced", this) // TODO: RENAME!!!!!!!
+        EventListener.Notify("OnOpened", this)
     }
 
     // for back compatibility
@@ -218,7 +231,7 @@
 
         // Now processing partner-portal
         if(partner && partner.isOpen) {
-            partner.ResetAnims() // todo: dangerous
+            ScheduleEvent.TryCancel(partner.portal + "static")
             partner.SetPortalStatic(1)
         }
 
@@ -228,27 +241,7 @@
             this.currentPortalFrame = null
         }
 
-        EventListener.Notify("OnFizzled", this) // TODO: RENAME!!!!!!!
-    }
-
-    // ====== \\
-    // INPUTS:
-
-    function Open() {
-        EntFireByHandle(this.portal, "SetActivatedState", "1")
-        this.OnOpened()
-    }
-
-    function Close(animTime = CLOSE_TIME) {
-        EntFireByHandle(this.portal, "SetActivatedState", "0")
-        this.OnClosed(animTime)
-    }
-    
-    function Fizzle(animTime = CLOSE_TIME) {
-        EntFireByHandle(this.portal, "SetActivatedState", "0")
-        EntFireByHandle(this.portal.GetPartnerInstance(), "SetActivatedState", "0")
-        this.OnClosed(animTime)
-        this.GetPartner().OnClosed(animTime)
+        EventListener.Notify("OnClosed", this)
     }
 
     function _tostring() return "CustomPortal{ pair: " + pairId + ", portal: " + this.portal.GetName() + " }" 

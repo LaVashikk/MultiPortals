@@ -69,6 +69,6 @@ auto.ConnectOutput("OnLoadGame", "OnPostSpawn")
 ::MP_Events <- {
     ChangePortalPair = VGameEvent("ChangePortalPair"),      // args: pairId (int)
     ChangePortalColor = VGameEvent("ChangePortalColor"),    // args: instance (CustomPortal), color (Vector)
-    OnPlaced = VGameEvent("OnPlaced"),                      // args: instance (CustomPortal)
-    OnFizzled = VGameEvent("OnFizzled"),                    // args: instance (CustomPortal)
+    OnOpened = VGameEvent("OnOpened"),                      // args: instance (CustomPortal)
+    OnClosed = VGameEvent("OnClosed"),                      // args: instance (CustomPortal)
 }

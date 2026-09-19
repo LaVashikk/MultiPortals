@@ -22,11 +22,11 @@ pairId <- instanceParams[0].tointeger()
 portal1 <- CustomPortal(pairId, EntityGroup[0], true , instanceParams[1], instanceParams)
 portal2 <- CustomPortal(pairId, EntityGroup[1], false, instanceParams[2], instanceParams)
 
-// A small hack to make alternative for `SetActivatedState`. // TODO
+// A small hack to make alternative for `SetActivatedState`
 foreach(CPortal in [portal1, portal2]) {
-    CPortal.portal.SetInputHook("FireUser1", function():(CPortal) {EntFireByHandle(CPortal.portal, "SetActivatedState", "1"); CPortal.OnPlaced(); return true})
-    CPortal.portal.SetInputHook("FireUser3", function():(CPortal) {CPortal.Fizzle(); return true})
-    CPortal.portal.SetInputHook("FireUser4", function():(CPortal) {CPortal.FizzleFast(); return true})
+    CPortal.portal.SetInputHook("FireUser1", function():(CPortal) {CPortal.Open(); return true})
+    CPortal.portal.SetInputHook("FireUser3", function():(CPortal) {CPortal.Close(); return true})
+    CPortal.portal.SetInputHook("FireUser4", function():(CPortal) {CPortal.Close(0); return true})
 }
 
 // Initialize the portal pair detector and connect its outputs to handle fizzle events.
