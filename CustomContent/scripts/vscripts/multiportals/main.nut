@@ -31,8 +31,8 @@ foreach(CPortal in [portal1, portal2]) {
 
 // Initialize the portal pair detector and connect its outputs to handle fizzle events.
 pairDetector <- InitPortalPair(pairId)
-pairDetector.ConnectOutputEx("OnEndTouchPortal1", function():(portal1) {portal1.OnFizzled()})
-pairDetector.ConnectOutputEx("OnEndTouchPortal2", function():(portal2) {portal2.OnFizzled()})
+pairDetector.ConnectOutputEx("OnEndTouchPortal1", function():(portal1) {portal1.OnClosed(CLOSE_TIME)})
+pairDetector.ConnectOutputEx("OnEndTouchPortal2", function():(portal2) {portal2.OnClosed(CLOSE_TIME)})
 
 
 // This function is called to make this portal pair the active one for the player's portal gun.

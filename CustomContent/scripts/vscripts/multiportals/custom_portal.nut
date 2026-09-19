@@ -13,6 +13,7 @@
     color = null;
     colorScale = 1;
     lastPos = Vector();
+    lastPartner = null;
     isOpen = false;
     currentPortalFrame = null;
 
@@ -99,9 +100,15 @@
 
     // Lerp Anim
     function LerpOpenAmount(startVal, endVal, time) {
+        if(time == 0) {
+            return this.SetOpenAmount(endVal)
+        }
         ::LerpMaterialModity(this.modifyOpenAmount, startVal, endVal, time, {eventName=this.portal + "amout"})
     }
     function LerpPortalStatic(startVal, endVal, time) {
+        if(time == 0) {
+            return this.SetPortalStatic(endVal)
+        }
         ::LerpMaterialModity(this.modifyStatic, startVal, endVal, time, {eventName=this.portal + "static"})
     }
     function ResetAnims() {
@@ -112,83 +119,107 @@
     }
     
     // Particles
-    function RestartParticle() {
-        EntFireByHandle(this.particle, "DestroyImmediately")
+    function StartParticle() {
         EntFireByHandle(this.particle, "Start", "", 0.03)
     }
     function StopParticle() {
         EntFireByHandle(this.particle, "StopPlayEndCap", "", 0.03)
     }
+    function StopParticleImmediately() {
+        EntFireByHandle(this.particle, "DestroyImmediately")
+    }
+    function RestartParticle() {
+        this.StopParticleImmediately()
+        this.StartParticle()
+    }
+
+    // Helper
+    function GetPartner() {
+        local portalPartner = this.portal.GetPartnerInstance()
+        if(!portalPartner) return this.lastPartner // partner is closed
+        this.lastPartner = portalPartner.GetUserData("CustomPortalInstance")
+        return this.lastPartner
+    }
+
+    // Inputs
+    // todo move here
 
     // ------------------------------------------------------------------------------ \\
 
     // Handlers
-    function OnPlaced() {
+    function OnOpened() {
         local portalOrigin = this.portal.GetOrigin()
 
         // do not process if the portal position has not changed!
         if(math.vector.IsEqual(portalOrigin, this.lastPos, 1000) && this.isOpen) return
+        local partner = this.GetPartner()
         this.lastPos = portalOrigin
         this.ResetAnims()
-
-        EventListener.Notify("OnPlaced", this)
-        this.portal.SetTraceIgnore(false)
 
         // If it was previously closed
         if(!this.isOpen) {
             this.fakePortalModel.SetDrawEnabled(1)
             if(this.ghosting && this.ghosting.IsValid()) 
                 this.ghosting.SetDrawEnabled(1)
-            this.isOpen = true
         }
 
+        this.portal.SetTraceIgnore(false)
+        this.isOpen = true
+
         // Portal opening animation
-        this.RestartParticle()
-        this.LerpOpenAmount(0, 1, OPEN_TIME)
         if(this.dynamicLight && this.dynamicLight.IsValid()) 
             animate.ColorTransition(this.dynamicLight, "0 0 0", this.color, OPEN_TIME, {ease = math.ease.InSine, eventName=this.dynamicLight})
 
+        this.RestartParticle()
+        this.LerpOpenAmount(0, 1, OPEN_TIME)
+        // Processing the PortalStatic effect
+        if(partner && partner.isOpen) {
+            this.LerpPortalStatic(1, 0, PORTAL_STATIC_OPEN_TIME)
+            ScheduleEvent.TryCancel(partner.portal + "static")
+            partner.LerpPortalStatic(1, 0, PORTAL_STATIC_OPEN_TIME)
+        }
+
         // Process portal frame (because I can)
         local portalFrame = entLib.FindByModelWithin("models/multiportals/portal_emitter.mdl", portalOrigin, 5)
-        local frameColor = math.vector.clamp((this.color * this.colorScale.tofloat()), 0, 255)
         if(portalFrame) {
+            local frameColor = math.vector.clamp((this.color * this.colorScale.tofloat()), 0, 255)
             animate.ColorTransition(portalFrame, Vector(), frameColor, 0.3)
         }
         // And process last portal frame
         if(this.currentPortalFrame) this.currentPortalFrame.SetColor(Vector())
         this.currentPortalFrame = portalFrame
-        
-
-        // Processing the PortalStatic effect
-        local portalPartner = this.portal.GetPartnerInstance()
-        if(!portalPartner) return  // partner is closed, ignore
-        local partner = portalPartner.GetUserData("CustomPortalInstance")
-        if(!partner.isOpen) return
-
-        this.LerpPortalStatic(1, 0, PORTAL_STATIC_OPEN_TIME)
-        ScheduleEvent.TryCancel(partner.portal + "static")
-        partner.LerpPortalStatic(1, 0, PORTAL_STATIC_OPEN_TIME)
+                
+        EventListener.Notify("OnPlaced", this) // TODO: RENAME!!!!!!!
     }
 
-    function OnFizzled() {
+    // for back compatibility
+    function OnPlaced() {OnOpened()}
+
+    function OnClosed(closeTime) {
         if(!this.isOpen) return 
+        local partner = this.GetPartner()
 
-        this.ResetAnims()
-        
         this.isOpen = false
-        this.StopParticle()
-        this.LerpOpenAmount(1, 0, CLOSE_TIME)
-        this.SetPortalStatic(1)
-        this.fakePortalModel.SetDrawEnabled(0, CLOSE_TIME, this.portal)
-
-        EventListener.Notify("OnFizzled", this)
         this.portal.SetTraceIgnore(true)
+        this.ResetAnims()
+
+        // Processing the portals effect
+        this.LerpOpenAmount(1, 0, closeTime)
+        this.SetPortalStatic(1)
+        this.fakePortalModel.SetDrawEnabled(0, closeTime, this.portal)
+        if(closeTime < 0.1) { this.StopParticleImmediately() } else { this.StopParticle() } 
 
         if(this.ghosting && this.ghosting.IsValid()) 
-            this.ghosting.SetDrawEnabled(0, CLOSE_TIME, this.portal)
+            this.ghosting.SetDrawEnabled(0, closeTime, this.portal)
         
         if(this.dynamicLight && this.dynamicLight.IsValid()) {
-            animate.ColorTransition(this.dynamicLight, this.dynamicLight.GetColor(), "0 0 0", CLOSE_TIME, {eventName=this.dynamicLight})
+            animate.ColorTransition(this.dynamicLight, this.dynamicLight.GetColor(), "0 0 0", closeTime, {eventName=this.dynamicLight})
+        }
+
+        // Now processing partner-portal
+        if(partner && partner.isOpen) {
+            partner.ResetAnims() // todo: dangerous
+            partner.SetPortalStatic(1)
         }
 
         // And process last portal frame
@@ -196,55 +227,28 @@
             this.currentPortalFrame.SetColor("0 0 0")
             this.currentPortalFrame = null
         }
+
+        EventListener.Notify("OnFizzled", this) // TODO: RENAME!!!!!!!
     }
 
     // ====== \\
     // INPUTS:
 
-    function Fizzle() {
-        EntFireByHandle(this.portal, "SetActivatedState", "0")
-        this.OnFizzled()
-
-        // Processing the PortalStatic effect
-        local portalPartner = this.portal.GetPartnerInstance()
-        if(!portalPartner) return  // partner is closed, ignore
-        local partner = portalPartner.GetUserData("CustomPortalInstance")
-        if(!partner.isOpen) return
-        
-        partner.ResetAnims()
-        partner.SetPortalStatic(1)
+    function Open() {
+        EntFireByHandle(this.portal, "SetActivatedState", "1")
+        this.OnOpened()
     }
 
-    function FizzleFast() {
-        this.isOpen = false
-        this.portal.SetTraceIgnore(true)
-        this.ResetAnims()
-
-        this.SetPortalStatic(1)
-        this.SetOpenAmount(0)
-        this.fakePortalModel.SetDrawEnabled(0)
+    function Close(animTime = CLOSE_TIME) {
         EntFireByHandle(this.portal, "SetActivatedState", "0")
-        EntFireByHandle(this.particle, "DestroyImmediately")
-
-        EventListener.Notify("OnFizzled", this)
-
-        if(this.ghosting && this.ghosting.IsValid()) 
-            this.ghosting.SetDrawEnabled(0)
-        if(this.dynamicLight && this.dynamicLight.IsValid()) 
-            this.dynamicLight.SetColor("0 0 0")
-        if(this.currentPortalFrame) {
-            this.currentPortalFrame.SetColor("0 0 0")
-            this.currentPortalFrame = null
-        }
-
-        // Processing the PortalStatic effect
-        local portalPartner = this.portal.GetPartnerInstance()
-        if(!portalPartner) return  // partner is closed, ignore
-        local partner = portalPartner.GetUserData("CustomPortalInstance")
-        if(!partner.isOpen) return
-        
-        partner.ResetAnims()
-        partner.SetPortalStatic(1)
+        this.OnClosed(animTime)
+    }
+    
+    function Fizzle(animTime = CLOSE_TIME) {
+        EntFireByHandle(this.portal, "SetActivatedState", "0")
+        EntFireByHandle(this.portal.GetPartnerInstance(), "SetActivatedState", "0")
+        this.OnClosed(animTime)
+        this.GetPartner().OnClosed(animTime)
     }
 
     function _tostring() return "CustomPortal{ pair: " + pairId + ", portal: " + this.portal.GetName() + " }" 
