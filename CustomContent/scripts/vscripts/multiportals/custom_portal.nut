@@ -49,7 +49,7 @@
             this.particleCP7 = entLib.FindByName(this.particle.GetName() + "-ColorPoint")
         
         // Hack to remove the portal particle that attaches to the model's attachment (WARN: the default particle will be at zero coordinates)
-        ScheduleEvent.Add("global", portal.SetModel, 1, [ALWAYS_PRECACHED_MODEL], portal) 
+        ScheduleEvent.Add("global", portal.SetModel, 1, [this.fakePortalModel.GetModelName()], portal)
 
         // Initial setup
         this.SetColor(color, false)
